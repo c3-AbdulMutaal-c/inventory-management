@@ -27,6 +27,41 @@
         </div>
       </div>
 
+      <div v-if="submittedOrders.length > 0" class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Submitted Orders</div>
+            <div class="card-subtitle">Restock orders you've placed</div>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="submitted-orders-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Submitted Date</th>
+                <th>Items</th>
+                <th>Max Lead Time</th>
+                <th>Expected Delivery</th>
+                <th>Total Value</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in submittedOrders" :key="order.id">
+                <td><strong>{{ order.id }}</strong></td>
+                <td>{{ formatDate(order.submitted_date) }}</td>
+                <td>{{ order.lines.length }} items</td>
+                <td>{{ order.max_lead_time_days }} days</td>
+                <td>{{ formatDate(order.expected_delivery) }}</td>
+                <td><strong>${{ order.total_cost.toLocaleString() }}</strong></td>
+                <td><span class="badge info">Submitted</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">{{ t('orders.allOrders') }} ({{ orders.length }})</h3>
@@ -95,6 +130,7 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+    const submittedOrders = ref([])
 
     // Use shared filters
     const {
@@ -153,13 +189,25 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    const loadSubmittedOrders = async () => {
+      try {
+        submittedOrders.value = await api.getSubmittedOrders()
+      } catch (err) {
+        // Non-fatal: submitted orders section simply stays hidden
+      }
+    }
+
+    onMounted(() => {
+      loadOrders()
+      loadSubmittedOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      submittedOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -172,6 +220,16 @@ export default {
 </script>
 
 <style scoped>
+.card-subtitle {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-top: 0.125rem;
+}
+
+.submitted-orders-table {
+  width: 100%;
+}
+
 /* Fixed table layout to prevent column shifting */
 .orders-table {
   table-layout: fixed;

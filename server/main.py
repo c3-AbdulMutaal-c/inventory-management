@@ -2,7 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
-from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
+from datetime import datetime, timedelta
+import hashlib
+from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, submitted_orders
 
 app = FastAPI(title="Factory Inventory Management System")
 
@@ -13,6 +15,12 @@ QUARTER_MAP = {
     'Q3-2025': ['2025-07', '2025-08', '2025-09'],
     'Q4-2025': ['2025-10', '2025-11', '2025-12']
 }
+
+# Deterministic 5-14 day lead time per SKU. Seeded by the SKU string so the
+# same item always yields the same lead time across server restarts.
+def lead_time_for_sku(sku: str) -> int:
+    h = int(hashlib.md5(sku.encode()).hexdigest(), 16)
+    return 5 + (h % 10)
 
 def filter_by_month(items: list, month: Optional[str]) -> list:
     """Filter items by month/quarter based on order_date field"""
@@ -119,6 +127,31 @@ class CreatePurchaseOrderRequest(BaseModel):
     unit_cost: float
     expected_delivery_date: str
     notes: Optional[str] = None
+
+class SubmittedOrderLine(BaseModel):
+    sku: str
+    name: str
+    quantity: int
+    unit_cost: float
+    line_total: float
+    lead_time_days: int
+
+class SubmittedOrder(BaseModel):
+    id: str
+    submitted_date: str
+    expected_delivery: str
+    max_lead_time_days: int
+    status: str
+    total_cost: float
+    lines: List[SubmittedOrderLine]
+
+class SubmittedOrderLineRequest(BaseModel):
+    sku: str
+    quantity: int
+
+class SubmittedOrderRequest(BaseModel):
+    budget: float
+    lines: List[SubmittedOrderLineRequest]
 
 # API endpoints
 @app.get("/")
@@ -303,6 +336,58 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+@app.get("/api/submitted-orders", response_model=List[SubmittedOrder])
+def get_submitted_orders():
+    """Get all restock orders placed from the Restocking tab."""
+    return submitted_orders
+
+@app.post("/api/submitted-orders", response_model=SubmittedOrder)
+def create_submitted_order(req: SubmittedOrderRequest):
+    """Create a restock order from budget-constrained line items.
+
+    Joins each line's SKU to inventory for unit_cost/name, applies a
+    deterministic per-SKU lead time, and rejects the request if the total
+    exceeds the caller's budget.
+    """
+    valid_lines = [ln for ln in req.lines if ln.quantity > 0]
+    if not valid_lines:
+        raise HTTPException(status_code=400, detail="At least one line with quantity > 0 is required")
+
+    inv_by_sku = {i["sku"]: i for i in inventory_items}
+    order_lines: List[SubmittedOrderLine] = []
+    for ln in valid_lines:
+        inv = inv_by_sku.get(ln.sku)
+        if not inv:
+            raise HTTPException(status_code=400, detail=f"Unknown SKU: {ln.sku}")
+        lt = lead_time_for_sku(ln.sku)
+        line_total = round(ln.quantity * inv["unit_cost"], 2)
+        order_lines.append(SubmittedOrderLine(
+            sku=ln.sku,
+            name=inv["name"],
+            quantity=ln.quantity,
+            unit_cost=inv["unit_cost"],
+            line_total=line_total,
+            lead_time_days=lt,
+        ))
+
+    total = round(sum(l.line_total for l in order_lines), 2)
+    if total > req.budget:
+        raise HTTPException(status_code=400, detail=f"Order total {total} exceeds budget {req.budget}")
+
+    max_lt = max(l.lead_time_days for l in order_lines)
+    now = datetime.now()
+    order = SubmittedOrder(
+        id=f"SO-{len(submitted_orders) + 1:04d}",
+        submitted_date=now.date().isoformat(),
+        expected_delivery=(now + timedelta(days=max_lt)).date().isoformat(),
+        max_lead_time_days=max_lt,
+        status="Submitted",
+        total_cost=total,
+        lines=order_lines,
+    )
+    submitted_orders.append(order.model_dump())
+    return order
 
 if __name__ == "__main__":
     import uvicorn
