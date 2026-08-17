@@ -74,6 +74,61 @@
           </table>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">{{ t('orders.submittedOrders.title') }} ({{ submittedOrders.length }})</h3>
+        </div>
+        <div v-if="submittedOrdersLoading" class="loading">{{ t('common.loading') }}</div>
+        <div v-else-if="submittedOrdersError" class="error">{{ submittedOrdersError }}</div>
+        <div v-else-if="submittedOrders.length === 0" class="empty-state">
+          {{ t('orders.submittedOrders.empty') }}
+        </div>
+        <div v-else class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>{{ t('orders.submittedOrders.table.orderNumber') }}</th>
+                <th>{{ t('orders.submittedOrders.table.items') }}</th>
+                <th>{{ t('orders.submittedOrders.table.budget') }}</th>
+                <th>{{ t('orders.submittedOrders.table.totalCost') }}</th>
+                <th>{{ t('orders.submittedOrders.table.status') }}</th>
+                <th>{{ t('orders.submittedOrders.table.createdDate') }}</th>
+                <th>{{ t('orders.submittedOrders.table.leadTime') }}</th>
+                <th>{{ t('orders.submittedOrders.table.expectedDelivery') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="ro in submittedOrders" :key="ro.id">
+                <td><strong>{{ ro.order_number }}</strong></td>
+                <td>
+                  <details class="items-details">
+                    <summary class="items-summary">
+                      {{ t('orders.itemsCount', { count: ro.items.length }) }}
+                    </summary>
+                    <div class="items-dropdown">
+                      <div v-for="item in ro.items" :key="item.item_sku" class="item-entry">
+                        <span class="item-name">{{ translateProductName(item.item_name) }}</span>
+                        <span class="item-meta">{{ t('orders.quantity') }}: {{ item.quantity }} @ {{ currencySymbol }}{{ item.unit_cost }}</span>
+                      </div>
+                    </div>
+                  </details>
+                </td>
+                <td>{{ currencySymbol }}{{ ro.budget.toLocaleString() }}</td>
+                <td><strong>{{ currencySymbol }}{{ ro.total_cost.toLocaleString() }}</strong></td>
+                <td>
+                  <span :class="['badge', getOrderStatusClass(ro.status)]">
+                    {{ t('status.submitted') }}
+                  </span>
+                </td>
+                <td>{{ formatDate(ro.created_date) }}</td>
+                <td>{{ t('orders.submittedOrders.table.leadTimeDays', { count: ro.lead_time_days }) }}</td>
+                <td>{{ formatDate(ro.expected_delivery_date) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -95,6 +150,10 @@ export default {
     const loading = ref(true)
     const error = ref(null)
     const orders = ref([])
+
+    const submittedOrders = ref([])
+    const submittedOrdersLoading = ref(true)
+    const submittedOrdersError = ref(null)
 
     // Use shared filters
     const {
@@ -129,6 +188,23 @@ export default {
       loadOrders()
     })
 
+    // Restock orders have no warehouse/category/status/date fields, so they
+    // are loaded once on mount and are not part of the filter watch above.
+    const loadSubmittedOrders = async () => {
+      try {
+        submittedOrdersLoading.value = true
+        submittedOrdersError.value = null
+        const fetchedRestockOrders = await api.getRestockOrders()
+        submittedOrders.value = fetchedRestockOrders.sort((a, b) => {
+          return new Date(b.created_date) - new Date(a.created_date)
+        })
+      } catch (err) {
+        submittedOrdersError.value = 'Failed to load submitted orders: ' + err.message
+      } finally {
+        submittedOrdersLoading.value = false
+      }
+    }
+
     const getOrdersByStatus = (status) => {
       return orders.value.filter(order => order.status === status)
     }
@@ -138,7 +214,8 @@ export default {
         'Delivered': 'success',
         'Shipped': 'info',
         'Processing': 'warning',
-        'Backordered': 'danger'
+        'Backordered': 'danger',
+        'Submitted': 'info'
       }
       return statusMap[status] || 'info'
     }
@@ -153,13 +230,19 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    onMounted(() => {
+      loadOrders()
+      loadSubmittedOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      submittedOrders,
+      submittedOrdersLoading,
+      submittedOrdersError,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -275,5 +358,12 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+  font-size: 0.938rem;
 }
 </style>
