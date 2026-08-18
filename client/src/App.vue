@@ -1,45 +1,26 @@
 <template>
   <div class="app">
-    <header class="top-nav">
-      <div class="nav-container">
-        <div class="logo">
-          <h1>{{ t('nav.companyName') }}</h1>
-          <span class="subtitle">{{ t('nav.subtitle') }}</span>
-        </div>
-        <nav class="nav-tabs">
-          <router-link to="/" :class="{ active: $route.path === '/' }">
-            {{ t('nav.overview') }}
-          </router-link>
-          <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
-            {{ t('nav.inventory') }}
-          </router-link>
-          <router-link to="/orders" :class="{ active: $route.path === '/orders' }">
-            {{ t('nav.orders') }}
-          </router-link>
-          <router-link to="/spending" :class="{ active: $route.path === '/spending' }">
-            {{ t('nav.finance') }}
-          </router-link>
-          <router-link to="/demand" :class="{ active: $route.path === '/demand' }">
-            {{ t('nav.demandForecast') }}
-          </router-link>
-          <router-link to="/restocking" :class="{ active: $route.path === '/restocking' }">
-            {{ t('nav.restocking') }}
-          </router-link>
-          <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
-            Reports
-          </router-link>
-        </nav>
+    <Sidebar />
+
+    <div class="app-body" :class="{ 'app-body-collapsed': isCollapsed }">
+      <header class="top-bar">
+        <button class="hamburger-btn" title="Open menu" @click="openMobile">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+        </button>
+        <div class="top-bar-spacer"></div>
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
           @show-tasks="showTasks = true"
         />
-      </div>
-    </header>
-    <FilterBar />
-    <main class="main-content">
-      <router-view />
-    </main>
+      </header>
+      <FilterBar />
+      <main class="main-content">
+        <router-view />
+      </main>
+    </div>
 
     <ProfileDetailsModal
       :is-open="showProfileDetails"
@@ -62,11 +43,13 @@ import { ref, onMounted, computed } from 'vue'
 import { api } from './api'
 import { useAuth } from './composables/useAuth'
 import { useI18n } from './composables/useI18n'
+import { useSidebar } from './composables/useSidebar'
 import FilterBar from './components/FilterBar.vue'
 import ProfileMenu from './components/ProfileMenu.vue'
 import ProfileDetailsModal from './components/ProfileDetailsModal.vue'
 import TasksModal from './components/TasksModal.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import Sidebar from './components/Sidebar.vue'
 
 export default {
   name: 'App',
@@ -75,11 +58,13 @@ export default {
     ProfileMenu,
     ProfileDetailsModal,
     TasksModal,
-    LanguageSwitcher
+    LanguageSwitcher,
+    Sidebar
   },
   setup() {
     const { currentUser } = useAuth()
     const { t } = useI18n()
+    const { isCollapsed, openMobile } = useSidebar()
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
     const apiTasks = ref([])
@@ -153,6 +138,8 @@ export default {
 
     return {
       t,
+      isCollapsed,
+      openMobile,
       showProfileDetails,
       showTasks,
       tasks,
@@ -165,6 +152,43 @@ export default {
 </script>
 
 <style>
+:root {
+  /* neutrals */
+  --color-bg: #f8f9fc;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f4f5f9;
+  --color-border: #e4e5ee;
+  --color-border-strong: #d3d5e3;
+  --color-text-primary: #16162a;
+  --color-text-secondary: #5c5e78;
+  --color-text-tertiary: #8b8da8;
+
+  /* primary (indigo/violet) */
+  --color-primary: #5b5bf6;
+  --color-primary-hover: #4747e0;
+  --color-primary-subtle: #edecff;
+  --color-primary-strong: #3a3ad1;
+
+  /* semantic status */
+  --color-success: #16a34a;
+  --color-success-subtle: #dcfce7;
+  --color-warning: #d97706;
+  --color-warning-subtle: #fef3c7;
+  --color-danger: #dc2626;
+  --color-danger-subtle: #fee2e2;
+  --color-info: #5b5bf6;
+  --color-info-subtle: #edecff;
+
+  /* spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -173,201 +197,162 @@ export default {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background: #f8fafc;
-  color: #1e293b;
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 .app {
   display: flex;
-  flex-direction: column;
   min-height: 100vh;
 }
 
-.top-nav {
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+/* Right-hand column offset to make room for the fixed sidebar (240px
+   expanded / 64px collapsed). Reactive to useSidebar() collapsed state. */
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin-left: 240px;
+  transition: margin-left 0.2s ease;
+}
+
+.app-body-collapsed {
+  margin-left: 64px;
+}
+
+.top-bar {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.nav-container {
-  max-width: 1600px;
-  margin: 0 auto;
+  height: 56px;
   display: flex;
   align-items: center;
-  padding: 0 2rem;
-  height: 70px;
+  padding: 0 var(--space-5);
+  gap: var(--space-3);
 }
 
-.nav-container > .nav-tabs {
-  margin-left: auto;
-  margin-right: 1rem;
-}
-
-.nav-container > .language-switcher {
-  margin-right: 1rem;
-}
-
-.logo {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-}
-
-.logo h1 {
-  font-size: 1.375rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
-}
-
-.subtitle {
-  font-size: 0.813rem;
-  color: #64748b;
-  font-weight: 400;
-  padding-left: 0.75rem;
-  border-left: 1px solid #e2e8f0;
-}
-
-.nav-tabs {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.nav-tabs a {
-  padding: 0.625rem 1.25rem;
-  color: #64748b;
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.938rem;
+.hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--space-2);
   border-radius: 6px;
-  transition: all 0.2s ease;
-  position: relative;
 }
 
-.nav-tabs a:hover {
-  color: #0f172a;
-  background: #f1f5f9;
+.hamburger-btn:hover {
+  background: var(--color-surface-alt);
 }
 
-.nav-tabs a.active {
-  color: #2563eb;
-  background: #eff6ff;
-}
-
-.nav-tabs a.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #2563eb;
+.top-bar-spacer {
+  flex: 1;
 }
 
 .main-content {
   flex: 1;
-  max-width: 1600px;
   width: 100%;
-  margin: 0 auto;
-  padding: 1.5rem 2rem;
+  padding: var(--space-6) var(--space-5);
 }
 
 .page-header {
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-6);
 }
 
 .page-header h2 {
-  font-size: 1.875rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 0.375rem;
-  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+  letter-spacing: -0.02em;
 }
 
 .page-header p {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 0.938rem;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .stat-card {
-  background: white;
-  padding: 1.25rem;
+  background: var(--color-surface);
+  padding: var(--space-5);
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--color-border);
   transition: all 0.2s ease;
 }
 
 .stat-card:hover {
-  border-color: #cbd5e1;
+  border-color: var(--color-border-strong);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .stat-label {
-  color: #64748b;
-  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.625rem;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-3);
 }
 
 .stat-value {
-  font-size: 2.25rem;
+  font-size: 2rem;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
 }
 
 .stat-card.warning .stat-value {
-  color: #ea580c;
+  color: var(--color-warning);
 }
 
 .stat-card.success .stat-value {
-  color: #059669;
+  color: var(--color-success);
 }
 
 .stat-card.danger .stat-value {
-  color: #dc2626;
+  color: var(--color-danger);
 }
 
 .stat-card.info .stat-value {
-  color: #2563eb;
+  color: var(--color-info);
 }
 
 .card {
-  background: white;
+  background: var(--color-surface);
   border-radius: 10px;
-  padding: 1.25rem;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 1.25rem;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 0.875rem;
-  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .card-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .table-container {
@@ -380,26 +365,27 @@ table {
 }
 
 thead {
-  background: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--color-surface-alt);
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 th {
   text-align: left;
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-2) var(--space-3);
   font-weight: 600;
-  color: #475569;
+  color: var(--color-text-tertiary);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 td {
-  padding: 0.5rem 0.75rem;
-  border-top: 1px solid #f1f5f9;
-  color: #334155;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 tbody tr {
@@ -407,7 +393,7 @@ tbody tr {
 }
 
 tbody tr:hover {
-  background: #f8fafc;
+  background: var(--color-surface-alt);
 }
 
 .badge {
@@ -421,69 +407,89 @@ tbody tr:hover {
 }
 
 .badge.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-subtle);
+  color: var(--color-success);
 }
 
 .badge.warning {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
 }
 
 .badge.danger {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
 }
 
 .badge.info {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-subtle);
+  color: var(--color-info);
 }
 
 .badge.increasing {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--color-success-subtle);
+  color: var(--color-success);
 }
 
 .badge.decreasing {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
 }
 
 .badge.stable {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-strong);
 }
 
 .badge.high {
-  background: #fecaca;
-  color: #991b1b;
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
 }
 
 .badge.medium {
-  background: #fed7aa;
-  color: #92400e;
+  background: var(--color-warning-subtle);
+  color: var(--color-warning);
 }
 
 .badge.low {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-info-subtle);
+  color: var(--color-info);
 }
 
 .loading {
   text-align: center;
-  padding: 3rem;
-  color: #64748b;
+  padding: var(--space-7);
+  color: var(--color-text-secondary);
   font-size: 0.938rem;
 }
 
 .error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-  padding: 1rem;
+  background: var(--color-danger-subtle);
+  border: 1px solid var(--color-danger-subtle);
+  color: var(--color-danger);
+  padding: var(--space-4);
   border-radius: 8px;
-  margin: 1rem 0;
+  margin: var(--space-4) 0;
   font-size: 0.938rem;
+}
+
+/* Tablet: icon-rail default handled by useSidebar; keep top bar visible */
+@media (max-width: 1023px) {
+  .main-content {
+    padding: var(--space-5) var(--space-4);
+  }
+}
+
+/* Mobile: sidebar becomes an off-canvas drawer, so the body no longer needs
+   a left margin, and the hamburger button (which opens the drawer) appears. */
+@media (max-width: 767px) {
+  .app-body,
+  .app-body-collapsed {
+    margin-left: 0;
+  }
+
+  .hamburger-btn {
+    display: flex;
+  }
 }
 </style>

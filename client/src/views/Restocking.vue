@@ -273,7 +273,7 @@ export default {
   flex: 1;
   height: 6px;
   border-radius: 3px;
-  background: #e2e8f0;
+  background: var(--color-border);
   outline: none;
   appearance: none;
   cursor: pointer;
@@ -284,7 +284,7 @@ export default {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #2563eb;
+  background: var(--color-primary);
   cursor: pointer;
   border: none;
 }
@@ -293,7 +293,7 @@ export default {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #2563eb;
+  background: var(--color-primary);
   cursor: pointer;
   border: none;
 }
@@ -301,7 +301,7 @@ export default {
 .budget-readout {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-text-primary);
   min-width: 120px;
   text-align: right;
 }
@@ -309,7 +309,7 @@ export default {
 .empty-state {
   text-align: center;
   padding: 2rem;
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-size: 0.938rem;
 }
 
@@ -320,7 +320,7 @@ export default {
 .totals-summary {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -333,24 +333,24 @@ export default {
 }
 
 .totals-label {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
 .totals-value {
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 700;
 }
 
 .place-order-section {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--color-border);
 }
 
 .place-order-btn {
   padding: 0.625rem 1.5rem;
-  background: #2563eb;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -361,11 +361,11 @@ export default {
 }
 
 .place-order-btn:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--color-primary-hover);
 }
 
 .place-order-btn:disabled {
-  background: #cbd5e1;
+  background: var(--color-border-strong);
   cursor: not-allowed;
 }
 
@@ -375,7 +375,7 @@ export default {
 
 .confirmation-title {
   font-weight: 700;
-  color: #065f46;
+  color: var(--color-success);
   margin-bottom: 0.75rem;
   font-size: 1rem;
 }
@@ -388,12 +388,12 @@ export default {
 }
 
 .confirmation-label {
-  color: #64748b;
+  color: var(--color-text-secondary);
   font-weight: 500;
 }
 
 .confirmation-value {
-  color: #0f172a;
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 </style>
