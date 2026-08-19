@@ -10,6 +10,7 @@
           </svg>
         </button>
         <div class="top-bar-spacer"></div>
+        <DarkModeToggle />
         <LanguageSwitcher />
         <ProfileMenu
           @show-profile-details="showProfileDetails = true"
@@ -50,6 +51,7 @@ import ProfileDetailsModal from './components/ProfileDetailsModal.vue'
 import TasksModal from './components/TasksModal.vue'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import Sidebar from './components/Sidebar.vue'
+import DarkModeToggle from './components/DarkModeToggle.vue'
 
 export default {
   name: 'App',
@@ -59,7 +61,8 @@ export default {
     ProfileDetailsModal,
     TasksModal,
     LanguageSwitcher,
-    Sidebar
+    Sidebar,
+    DarkModeToggle
   },
   setup() {
     const { currentUser } = useAuth()
@@ -187,6 +190,41 @@ export default {
   --space-5: 24px;
   --space-6: 32px;
   --space-7: 48px;
+}
+
+/* Dark mode: overrides the same variable set above. Applied via a `dark`
+   class on <html> (toggled by useDarkMode.js) so every component that
+   already reads var(--color-*) automatically re-themes with no per-view
+   changes needed. Semantic accent colors (primary/success/warning/danger/
+   info) are lightened for contrast against the dark surfaces, and their
+   "subtle" badge backgrounds switch to low-alpha tints instead of solid
+   pastels so they read correctly on dark cards. */
+html.dark {
+  /* neutrals */
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-alt: #263449;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-tertiary: #94a3b8;
+
+  /* primary (indigo/violet), lightened for dark backgrounds */
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-subtle: rgba(129, 140, 248, 0.16);
+  --color-primary-strong: #c7d2fe;
+
+  /* semantic status, lightened + tinted subtle backgrounds */
+  --color-success: #4ade80;
+  --color-success-subtle: rgba(74, 222, 128, 0.16);
+  --color-warning: #fbbf24;
+  --color-warning-subtle: rgba(251, 191, 36, 0.16);
+  --color-danger: #f87171;
+  --color-danger-subtle: rgba(248, 113, 113, 0.16);
+  --color-info: #818cf8;
+  --color-info-subtle: rgba(129, 140, 248, 0.16);
 }
 
 * {
