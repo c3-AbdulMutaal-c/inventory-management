@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
+from datetime import date, timedelta
 from pydantic import BaseModel
-from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
+from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders, restock_orders, save_restock_orders
 
 app = FastAPI(title="Factory Inventory Management System")
 
@@ -89,6 +90,7 @@ class DemandForecast(BaseModel):
     forecasted_demand: int
     trend: str
     period: str
+    unit_cost: float
 
 class BacklogItem(BaseModel):
     id: str
@@ -119,6 +121,58 @@ class CreatePurchaseOrderRequest(BaseModel):
     unit_cost: float
     expected_delivery_date: str
     notes: Optional[str] = None
+
+RESTOCK_LEAD_TIME_DAYS = 10
+
+class RestockOrderItemInput(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+
+class CreateRestockOrderRequest(BaseModel):
+    budget: float
+    items: List[RestockOrderItemInput]
+
+class RestockOrderLineItem(BaseModel):
+    item_sku: str
+    item_name: str
+    quantity: int
+    unit_cost: float
+    line_total: float
+
+class RestockOrder(BaseModel):
+    id: str
+    order_number: str
+    budget: float
+    items: List[RestockOrderLineItem]
+    total_cost: float
+    status: str
+    lead_time_days: int
+    created_date: str
+    expected_delivery_date: str
+
+# Task field names mirror the frontend's payload shape (camelCase dueDate)
+# rather than this file's usual snake_case, since Tasks has no serialization
+# layer between the API response and the Vue component.
+TASK_PRIORITIES = {"high", "medium", "low"}
+
+class Task(BaseModel):
+    id: str
+    title: str
+    priority: str
+    dueDate: str
+    status: str
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    priority: str
+    dueDate: str
+
+# In-memory only: unlike restock_orders, tasks aren't persisted to disk and
+# reset on server restart.
+tasks: List[dict] = []
+next_task_id = 1
 
 # API endpoints
 @app.get("/")
@@ -178,6 +232,101 @@ def get_backlog():
         item_dict["has_purchase_order"] = has_po
         result.append(item_dict)
     return result
+
+@app.post("/api/restock-orders", response_model=RestockOrder)
+def create_restock_order(request: CreateRestockOrderRequest):
+    """Submit a restocking order for a set of demand-forecast items"""
+    if request.budget <= 0:
+        raise HTTPException(status_code=400, detail="Budget must be greater than zero")
+    if not request.items:
+        raise HTTPException(status_code=400, detail="At least one item is required to place a restock order")
+
+    valid_skus = {f["item_sku"] for f in demand_forecasts}
+    line_items = []
+    total_cost = 0.0
+    for item in request.items:
+        if item.item_sku not in valid_skus:
+            raise HTTPException(status_code=400, detail=f"Unknown item SKU: {item.item_sku}")
+        if item.quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"Quantity for {item.item_sku} must be greater than zero")
+
+        # Recompute the line total server-side rather than trusting a client-sent total
+        line_total = round(item.quantity * item.unit_cost, 2)
+        total_cost += line_total
+        line_items.append({
+            "item_sku": item.item_sku,
+            "item_name": item.item_name,
+            "quantity": item.quantity,
+            "unit_cost": item.unit_cost,
+            "line_total": line_total
+        })
+
+    created = date.today()
+    expected_delivery = created + timedelta(days=RESTOCK_LEAD_TIME_DAYS)
+
+    new_order = {
+        "id": str(len(restock_orders) + 1),
+        "order_number": f"RST-{created.year}-{len(restock_orders) + 1:04d}",
+        "budget": request.budget,
+        "items": line_items,
+        "total_cost": round(total_cost, 2),
+        "status": "Submitted",
+        "lead_time_days": RESTOCK_LEAD_TIME_DAYS,
+        "created_date": created.isoformat(),
+        "expected_delivery_date": expected_delivery.isoformat()
+    }
+    restock_orders.append(new_order)
+    save_restock_orders()
+    return new_order
+
+@app.get("/api/restock-orders", response_model=List[RestockOrder])
+def get_restock_orders():
+    """Get all submitted restock orders"""
+    return restock_orders
+
+@app.get("/api/tasks", response_model=List[Task])
+def get_tasks():
+    """Get all server-tracked tasks"""
+    return tasks
+
+@app.post("/api/tasks", response_model=Task)
+def create_task(request: CreateTaskRequest):
+    """Create a new task"""
+    global next_task_id
+
+    if not request.title.strip():
+        raise HTTPException(status_code=400, detail="Task title is required")
+    if request.priority not in TASK_PRIORITIES:
+        raise HTTPException(status_code=400, detail="Priority must be high, medium, or low")
+
+    new_task = {
+        "id": f"task-{next_task_id}",
+        "title": request.title.strip(),
+        "priority": request.priority,
+        "dueDate": request.dueDate,
+        "status": "pending"
+    }
+    next_task_id += 1
+    tasks.insert(0, new_task)
+    return new_task
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: str):
+    """Delete a task"""
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    tasks.remove(task)
+    return {"message": "Task deleted"}
+
+@app.patch("/api/tasks/{task_id}", response_model=Task)
+def toggle_task(task_id: str):
+    """Toggle a task's completion status between pending and completed"""
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task["status"] = "completed" if task["status"] == "pending" else "pending"
+    return task
 
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
