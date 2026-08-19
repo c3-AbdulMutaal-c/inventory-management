@@ -8,6 +8,7 @@ from mock_data import inventory_items, orders, demand_forecasts, backlog_items, 
 app = FastAPI(title="Factory Inventory Management System")
 
 # Quarter mapping for date filtering
+# Hardcoded to 2025 since the mock data only covers this fiscal year
 QUARTER_MAP = {
     'Q1-2025': ['2025-01', '2025-02', '2025-03'],
     'Q2-2025': ['2025-04', '2025-05', '2025-06'],
