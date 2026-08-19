@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *\"/client/\"*) client_dir=\"${f%/client/*}/client\"; (cd \"$client_dir\" && npx prettier --write --ignore-unknown \"$f\") ;; esac 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
