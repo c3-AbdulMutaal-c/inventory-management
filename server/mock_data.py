@@ -55,5 +55,9 @@ def save_restock_orders():
     to survive a server restart."""
     save_json_file('restock_orders.json', restock_orders)
 
+def save_purchase_orders():
+    """Persist purchase_orders to disk, same rationale as save_restock_orders."""
+    save_json_file('purchase_orders.json', purchase_orders)
+
 # All data is now loaded from JSON files in the data/ directory
 # This allows for easier maintenance and updates of the sample data
