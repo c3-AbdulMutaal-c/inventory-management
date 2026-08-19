@@ -152,6 +152,28 @@ class RestockOrder(BaseModel):
     created_date: str
     expected_delivery_date: str
 
+# Task field names mirror the frontend's payload shape (camelCase dueDate)
+# rather than this file's usual snake_case, since Tasks has no serialization
+# layer between the API response and the Vue component.
+TASK_PRIORITIES = {"high", "medium", "low"}
+
+class Task(BaseModel):
+    id: str
+    title: str
+    priority: str
+    dueDate: str
+    status: str
+
+class CreateTaskRequest(BaseModel):
+    title: str
+    priority: str
+    dueDate: str
+
+# In-memory only: unlike restock_orders, tasks aren't persisted to disk and
+# reset on server restart.
+tasks: List[dict] = []
+next_task_id = 1
+
 # API endpoints
 @app.get("/")
 def root():
@@ -261,6 +283,50 @@ def create_restock_order(request: CreateRestockOrderRequest):
 def get_restock_orders():
     """Get all submitted restock orders"""
     return restock_orders
+
+@app.get("/api/tasks", response_model=List[Task])
+def get_tasks():
+    """Get all server-tracked tasks"""
+    return tasks
+
+@app.post("/api/tasks", response_model=Task)
+def create_task(request: CreateTaskRequest):
+    """Create a new task"""
+    global next_task_id
+
+    if not request.title.strip():
+        raise HTTPException(status_code=400, detail="Task title is required")
+    if request.priority not in TASK_PRIORITIES:
+        raise HTTPException(status_code=400, detail="Priority must be high, medium, or low")
+
+    new_task = {
+        "id": f"task-{next_task_id}",
+        "title": request.title.strip(),
+        "priority": request.priority,
+        "dueDate": request.dueDate,
+        "status": "pending"
+    }
+    next_task_id += 1
+    tasks.insert(0, new_task)
+    return new_task
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: str):
+    """Delete a task"""
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    tasks.remove(task)
+    return {"message": "Task deleted"}
+
+@app.patch("/api/tasks/{task_id}", response_model=Task)
+def toggle_task(task_id: str):
+    """Toggle a task's completion status between pending and completed"""
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task["status"] = "completed" if task["status"] == "pending" else "pending"
+    return task
 
 @app.get("/api/dashboard/summary")
 def get_dashboard_summary(
