@@ -1,21 +1,20 @@
 <template>
   <!-- Semi-transparent backdrop for mobile off-canvas drawer -->
-  <div
-    v-if="isMobileOpen"
-    class="sidebar-backdrop"
-    @click="closeMobile"
-  ></div>
+  <div v-if="isMobileOpen" class="sidebar-backdrop" @click="closeMobile"></div>
 
   <aside
     class="sidebar"
-    :class="{ 'sidebar-collapsed': effectiveCollapsed, 'sidebar-mobile-open': isMobileOpen }"
+    :class="{
+      'sidebar-collapsed': effectiveCollapsed,
+      'sidebar-mobile-open': isMobileOpen,
+    }"
   >
     <div class="sidebar-header">
       <div class="logo" :title="effectiveCollapsed ? t('nav.companyName') : ''">
         <div class="logo-mark">{{ companyInitial }}</div>
         <div v-if="!effectiveCollapsed" class="logo-text">
-          <h1>{{ t('nav.companyName') }}</h1>
-          <span class="subtitle">{{ t('nav.subtitle') }}</span>
+          <h1>{{ t("nav.companyName") }}</h1>
+          <span class="subtitle">{{ t("nav.subtitle") }}</span>
         </div>
       </div>
       <button
@@ -25,7 +24,12 @@
         @click="closeMobile"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          <path
+            d="M5 5L15 15M15 5L5 15"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
     </div>
@@ -41,7 +45,9 @@
         @click="closeMobile"
       >
         <span class="nav-icon" v-html="link.icon"></span>
-        <span v-if="!effectiveCollapsed" class="nav-label">{{ link.label }}</span>
+        <span v-if="!effectiveCollapsed" class="nav-label">{{
+          link.label
+        }}</span>
       </router-link>
     </nav>
 
@@ -59,7 +65,13 @@
           class="chevron-icon"
           :class="{ 'chevron-flipped': effectiveCollapsed }"
         >
-          <path d="M11 4L6 9L11 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          <path
+            d="M11 4L6 9L11 14"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
         <span v-if="!effectiveCollapsed" class="collapse-label">Collapse</span>
       </button>
@@ -68,44 +80,51 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useI18n } from '../composables/useI18n'
-import { useSidebar } from '../composables/useSidebar'
+import { computed } from "vue";
+import { useI18n } from "../composables/useI18n";
+import { useSidebar } from "../composables/useSidebar";
 
-const { t } = useI18n()
-const { isCollapsed, isMobile, isMobileOpen, toggleCollapsed, closeMobile } = useSidebar()
+const { t } = useI18n();
+const { isCollapsed, isMobile, isMobileOpen, toggleCollapsed, closeMobile } =
+  useSidebar();
 
 // The mobile off-canvas drawer always renders fully expanded (icon + label),
 // regardless of the persisted/auto collapsed preference. `isMobile` is now
 // live viewport-width state shared from useSidebar() (single resize listener).
-const effectiveCollapsed = computed(() => (isMobile.value ? false : isCollapsed.value))
+const effectiveCollapsed = computed(() =>
+  isMobile.value ? false : isCollapsed.value,
+);
 
 const companyInitial = computed(() => {
-  const name = t('nav.companyName')
-  return name ? name.charAt(0).toUpperCase() : 'C'
-})
+  const name = t("nav.companyName");
+  return name ? name.charAt(0).toUpperCase() : "C";
+});
 
 // Inline stroke-based SVG icons (20px), matching the style already used in
 // ProfileMenu.vue / LanguageSwitcher.vue
 const icons = {
   grid: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>',
   box: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2L17 5.5V14.5L10 18L3 14.5V5.5L10 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 5.5L10 9L17 5.5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 9V18" stroke="currentColor" stroke-width="1.5"/></svg>',
-  receipt: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 2H15V18L13 16.5L11 18L9 16.5L7 18L5 16.5V2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.5 6H12.5M7.5 9.5H12.5M7.5 13H10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  receipt:
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M5 2H15V18L13 16.5L11 18L9 16.5L7 18L5 16.5V2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7.5 6H12.5M7.5 9.5H12.5M7.5 13H10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   coin: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 6.5V13.5M12 8C12 6.89543 11.1046 6.5 10 6.5C8.89543 6.5 8 6.89543 8 8C8 9.10457 8.89543 9.5 10 9.5C11.1046 9.5 12 9.89543 12 11C12 12.1046 11.1046 12.5 10 12.5C8.89543 12.5 8 12.1046 8 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-  trending: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 13L8 8L12 11L17 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 5H17V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  refresh: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10C4 6.68629 6.68629 4 10 4C12.2249 4 14.1637 5.20955 15.1955 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16 10C16 13.3137 13.3137 16 10 16C7.77512 16 5.83628 14.7905 4.80448 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12.5 7H15.5V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 13H4.5V16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  document: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 2H12L16 6V18H4V2H6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 2V6H16" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 10H13M7 13H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
-}
+  trending:
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 13L8 8L12 11L17 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M13 5H17V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  refresh:
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10C4 6.68629 6.68629 4 10 4C12.2249 4 14.1637 5.20955 15.1955 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M16 10C16 13.3137 13.3137 16 10 16C7.77512 16 5.83628 14.7905 4.80448 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12.5 7H15.5V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.5 13H4.5V16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  document:
+    '<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M6 2H12L16 6V18H4V2H6Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 2V6H16" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 10H13M7 13H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+};
 
 const navLinks = computed(() => [
-  { path: '/', label: t('nav.overview'), icon: icons.grid },
-  { path: '/inventory', label: t('nav.inventory'), icon: icons.box },
-  { path: '/orders', label: t('nav.orders'), icon: icons.receipt },
-  { path: '/spending', label: t('nav.finance'), icon: icons.coin },
-  { path: '/demand', label: t('nav.demandForecast'), icon: icons.trending },
-  { path: '/restocking', label: t('nav.restocking'), icon: icons.refresh },
-  { path: '/reports', label: 'Reports', icon: icons.document }
-])
+  { path: "/", label: t("nav.overview"), icon: icons.grid },
+  { path: "/inventory", label: t("nav.inventory"), icon: icons.box },
+  { path: "/orders", label: t("nav.orders"), icon: icons.receipt },
+  { path: "/spending", label: t("nav.finance"), icon: icons.coin },
+  { path: "/demand", label: t("nav.demandForecast"), icon: icons.trending },
+  { path: "/restocking", label: t("nav.restocking"), icon: icons.refresh },
+  { path: "/reports", label: t("nav.reports"), icon: icons.document },
+]);
 </script>
 
 <style scoped>
@@ -120,7 +139,9 @@ const navLinks = computed(() => [
   display: flex;
   flex-direction: column;
   z-index: 200;
-  transition: width 0.2s ease, transform 0.2s ease;
+  transition:
+    width 0.2s ease,
+    transform 0.2s ease;
 }
 
 .sidebar-collapsed {
